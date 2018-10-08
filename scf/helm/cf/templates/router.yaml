@@ -52,12 +52,6 @@ metadata:
   name: "router"
   labels:
     skiff-role-name: "router"
-    app.kubernetes.io/component: "router"
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/name: {{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-    app.kubernetes.io/version: {{ .Chart.AppVersion }}
-    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 spec:
   podManagementPolicy: "Parallel"
   replicas: {{ if and .Values.config.HA (eq (int .Values.sizing.router.count) 1) -}} 2 {{- else -}} {{ .Values.sizing.router.count }} {{- end }}
@@ -67,27 +61,12 @@ spec:
       name: "router"
       labels:
         skiff-role-name: "router"
-        app.kubernetes.io/component: "router"
-        app.kubernetes.io/instance: {{ .Release.Name }}
-        app.kubernetes.io/managed-by: {{ .Release.Service }}
-        app.kubernetes.io/name: {{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-        app.kubernetes.io/version: {{ .Chart.AppVersion }}
-        helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
     spec:
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: "skiff-role-name"
-                  operator: "In"
-                  values:
-                  - "diego-cell"
-              topologyKey: "beta.kubernetes.io/os"
-            weight: 100
           - podAffinityTerm:
               labelSelector:
                 matchExpressions:
@@ -106,8 +85,6 @@ spec:
           value: {{if ne (typeOf .Values.env.CATS_SUITES) "<nil>"}}{{if has (kindOf .Values.env.CATS_SUITES) (list "map" "slice")}}{{.Values.env.CATS_SUITES | toJson | quote}}{{else}}{{.Values.env.CATS_SUITES | quote}}{{end}}{{else}}""{{end}}
         - name: "FORCE_FORWARDED_PROTO_AS_HTTPS"
           value: {{if ne (typeOf .Values.env.FORCE_FORWARDED_PROTO_AS_HTTPS) "<nil>"}}{{if has (kindOf .Values.env.FORCE_FORWARDED_PROTO_AS_HTTPS) (list "map" "slice")}}{{.Values.env.FORCE_FORWARDED_PROTO_AS_HTTPS | toJson | quote}}{{else}}{{.Values.env.FORCE_FORWARDED_PROTO_AS_HTTPS | quote}}{{end}}{{else}}{{fail "env.FORCE_FORWARDED_PROTO_AS_HTTPS has not been set"}}{{end}}
-        - name: "GARDEN_ROOTFS_DRIVER"
-          value: {{if ne (typeOf .Values.env.GARDEN_ROOTFS_DRIVER) "<nil>"}}{{if has (kindOf .Values.env.GARDEN_ROOTFS_DRIVER) (list "map" "slice")}}{{.Values.env.GARDEN_ROOTFS_DRIVER | toJson | quote}}{{else}}{{.Values.env.GARDEN_ROOTFS_DRIVER | quote}}{{end}}{{else}}{{fail "env.GARDEN_ROOTFS_DRIVER has not been set"}}{{end}}
 
         {{- if not .Values.secrets.INTERNAL_CA_CERT }}
         - name: "INTERNAL_CA_CERT"
@@ -311,7 +288,7 @@ spec:
           value: {{if ne (typeOf .Values.env.UAA_HOST) "<nil>"}}{{if has (kindOf .Values.env.UAA_HOST) (list "map" "slice")}}{{.Values.env.UAA_HOST | toJson | quote}}{{else}}{{.Values.env.UAA_HOST | quote}}{{end}}{{else}}{{fail "env.UAA_HOST has not been set"}}{{end}}
         - name: "UAA_PORT"
           value: {{if ne (typeOf .Values.env.UAA_PORT) "<nil>"}}{{if has (kindOf .Values.env.UAA_PORT) (list "map" "slice")}}{{.Values.env.UAA_PORT | toJson | quote}}{{else}}{{.Values.env.UAA_PORT | quote}}{{end}}{{else}}""{{end}}
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-router:81fb2b6423753bd68208f51a19c17d760fac4800"
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-router:277cf67a4cf67a02de31e625d3065cfdc499e77c"
         lifecycle:
           preStop:
             exec:

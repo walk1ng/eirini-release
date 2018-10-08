@@ -1,24 +1,14 @@
 ---
-# The nats instance group contains the following jobs:
+# The consul instance group contains the following jobs:
 #
 # - global-properties: Dummy BOSH job used to host global parameters that are
 #   required to configure SCF
 #
-# - nats: The NATS server provides publish-subscribe messaging system for the
-#   Cloud Controller, the DEA , HM9000, and other Cloud Foundry components.
-#
-# Also: loggregator_agent
+# Also: consul_agent
+{{- if gt (int .Values.sizing.consul.count) 0 }}
 
-{{- if gt (int .Values.sizing.nats.count) 3 }}
-_maxReplicas: {{ fail "nats cannot have more than 3 instances" }}
-{{- end }}
-
-{{- if and .Values.config.HA (and (ne (int .Values.sizing.nats.count) 1) (lt (int .Values.sizing.nats.count) 2)) }}
-_minHAReplicas: {{ fail "nats must have at least 2 instances for HA" }}
-{{- end }}
-
-{{- if lt (int .Values.sizing.nats.count) 1 }}
-_minReplicas: {{ fail "nats must have at least 1 instances" }}
+{{- if gt (int .Values.sizing.consul.count) 1 }}
+_maxReplicas: {{ fail "consul cannot have more than 1 instances" }}
 {{- end }}
 
 {{- if .Values.sizing.HA }}
@@ -41,43 +31,70 @@ _moved_sizing_memory_limits: {{ if .Values.sizing.memory.limits }} {{ fail "Bad 
 _moved_sizing_memory_requests: {{ if .Values.sizing.memory.requests }} {{ fail "Bad use of moved variable sizing.memory.requests. The new name to use is config.memory.requests" }} {{else}} ok {{end}}
 {{- end }}
 
+{{- if eq (mod (int .Values.sizing.consul.count) 2) 0 }}
+_oddReplicas: {{ fail "consul must have an odd instance count" }}
+{{- end }}
+
 apiVersion: "apps/v1beta1"
 kind: "StatefulSet"
 metadata:
-  name: "nats"
+  name: "consul"
   labels:
-    skiff-role-name: "nats"
+    skiff-role-name: "consul"
 spec:
   podManagementPolicy: "Parallel"
-  replicas: {{ if and .Values.config.HA (eq (int .Values.sizing.nats.count) 1) -}} 2 {{- else -}} {{ .Values.sizing.nats.count }} {{- end }}
-  serviceName: "nats-set"
+  replicas: {{ if and .Values.config.HA (eq (int .Values.sizing.consul.count) 0) -}} 1 {{- else -}} {{ .Values.sizing.consul.count }} {{- end }}
+  serviceName: "consul-set"
   template:
     metadata:
-      name: "nats"
+      name: "consul"
       labels:
-        skiff-role-name: "nats"
+        skiff-role-name: "consul"
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
     spec:
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: "skiff-role-name"
-                  operator: "In"
-                  values:
-                  - "nats"
-              topologyKey: "beta.kubernetes.io/os"
-            weight: 100
-        {{- if .Values.sizing.nats.affinity.nodeAffinity }}
-        nodeAffinity: {{ toJson .Values.sizing.nats.affinity.nodeAffinity }}
-        {{- end }}
       containers:
       - env:
         - name: "CATS_SUITES"
           value: {{if ne (typeOf .Values.env.CATS_SUITES) "<nil>"}}{{if has (kindOf .Values.env.CATS_SUITES) (list "map" "slice")}}{{.Values.env.CATS_SUITES | toJson | quote}}{{else}}{{.Values.env.CATS_SUITES | quote}}{{end}}{{else}}""{{end}}
+
+        {{- if not .Values.secrets.CONSUL_SERVER_CERT }}
+        - name: "CONSUL_SERVER_CERT"
+          valueFrom:
+            secretKeyRef:
+              key: "consul-server-cert"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if .Values.secrets.CONSUL_SERVER_CERT }}
+        - name: "CONSUL_SERVER_CERT"
+          valueFrom:
+            secretKeyRef:
+              key: "consul-server-cert"
+              name: "secrets"
+        {{- end }}
+
+        {{- if not .Values.secrets.CONSUL_SERVER_CERT_KEY }}
+        - name: "CONSUL_SERVER_CERT_KEY"
+          valueFrom:
+            secretKeyRef:
+              key: "consul-server-cert-key"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if .Values.secrets.CONSUL_SERVER_CERT_KEY }}
+        - name: "CONSUL_SERVER_CERT_KEY"
+          valueFrom:
+            secretKeyRef:
+              key: "consul-server-cert-key"
+              name: "secrets"
+        {{- end }}
+
+        - name: "CONSUL_SERVER_ENCRYPT_KEY"
+          valueFrom:
+            secretKeyRef:
+              key: "consul-server-encrypt-key"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
 
         {{- if not .Values.secrets.INTERNAL_CA_CERT }}
         - name: "INTERNAL_CA_CERT"
@@ -101,42 +118,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: "metadata.namespace"
-        - name: "KUBE_AZ"
-          value: "z1"
-        - name: "KUBE_SIZING_NATS_COUNT"
-          value: {{ .Values.sizing.nats.count | quote }}
-
-        {{- if not .Values.secrets.LOGGREGATOR_AGENT_CERT }}
-        - name: "LOGGREGATOR_AGENT_CERT"
-          valueFrom:
-            secretKeyRef:
-              key: "loggregator-agent-cert"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
-        {{- if .Values.secrets.LOGGREGATOR_AGENT_CERT }}
-        - name: "LOGGREGATOR_AGENT_CERT"
-          valueFrom:
-            secretKeyRef:
-              key: "loggregator-agent-cert"
-              name: "secrets"
-        {{- end }}
-
-        {{- if not .Values.secrets.LOGGREGATOR_AGENT_CERT_KEY }}
-        - name: "LOGGREGATOR_AGENT_CERT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "loggregator-agent-cert-key"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
-        {{- if .Values.secrets.LOGGREGATOR_AGENT_CERT_KEY }}
-        - name: "LOGGREGATOR_AGENT_CERT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "loggregator-agent-cert-key"
-              name: "secrets"
-        {{- end }}
 
         {{- if not .Values.secrets.MONIT_PASSWORD }}
         - name: "MONIT_PASSWORD"
@@ -154,75 +135,65 @@ spec:
               name: "secrets"
         {{- end }}
 
-        {{- if not .Values.secrets.NATS_PASSWORD }}
-        - name: "NATS_PASSWORD"
-          valueFrom:
-            secretKeyRef:
-              key: "nats-password"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
-        {{- if .Values.secrets.NATS_PASSWORD }}
-        - name: "NATS_PASSWORD"
-          valueFrom:
-            secretKeyRef:
-              key: "nats-password"
-              name: "secrets"
-        {{- end }}
-
         - name: "SCF_LOG_HOST"
           value: {{if ne (typeOf .Values.env.SCF_LOG_HOST) "<nil>"}}{{if has (kindOf .Values.env.SCF_LOG_HOST) (list "map" "slice")}}{{.Values.env.SCF_LOG_HOST | toJson | quote}}{{else}}{{.Values.env.SCF_LOG_HOST | quote}}{{end}}{{else}}""{{end}}
         - name: "SCF_LOG_PORT"
           value: {{if ne (typeOf .Values.env.SCF_LOG_PORT) "<nil>"}}{{if has (kindOf .Values.env.SCF_LOG_PORT) (list "map" "slice")}}{{.Values.env.SCF_LOG_PORT | toJson | quote}}{{else}}{{.Values.env.SCF_LOG_PORT | quote}}{{end}}{{else}}""{{end}}
         - name: "SCF_LOG_PROTOCOL"
           value: {{if ne (typeOf .Values.env.SCF_LOG_PROTOCOL) "<nil>"}}{{if has (kindOf .Values.env.SCF_LOG_PROTOCOL) (list "map" "slice")}}{{.Values.env.SCF_LOG_PROTOCOL | toJson | quote}}{{else}}{{.Values.env.SCF_LOG_PROTOCOL | quote}}{{end}}{{else}}{{fail "env.SCF_LOG_PROTOCOL has not been set"}}{{end}}
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-nats:74bb87553bfd189f8127c868d7f98951b973ec52"
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-consul:2eaf30c0f5cb7ade16994f69f09b71763b20cf1d"
         lifecycle:
           preStop:
             exec:
               command:
               - "/opt/fissile/pre-stop.sh"
         livenessProbe: ~
-        name: "nats"
+        name: "consul"
         ports:
-        - containerPort: 4222
-          name: "nats"
+        - containerPort: 8300
+          name: "consul-server"
           protocol: "TCP"
-        - containerPort: 4223
-          name: "nats-routes"
+        - containerPort: 8500
+          name: "consul-http"
           protocol: "TCP"
+        - containerPort: 8301
+          name: "serf-tcp"
+          protocol: "TCP"
+        - containerPort: 8301
+          name: "serf-udp"
+          protocol: "UDP"
         readinessProbe:
           exec:
             command:
             - "/opt/fissile/readiness-probe.sh"
         resources:
           requests:
-            {{- if and .Values.config.memory.requests .Values.sizing.nats.memory.request }}
-            memory: "{{ int .Values.sizing.nats.memory.request }}Mi"
+            {{- if and .Values.config.memory.requests .Values.sizing.consul.memory.request }}
+            memory: "{{ int .Values.sizing.consul.memory.request }}Mi"
             {{- end }}
 
-            {{- if and .Values.config.cpu.requests .Values.sizing.nats.cpu.request }}
-            cpu: "{{ int .Values.sizing.nats.cpu.request }}m"
+            {{- if and .Values.config.cpu.requests .Values.sizing.consul.cpu.request }}
+            cpu: "{{ int .Values.sizing.consul.cpu.request }}m"
             {{- end }}
 
           limits:
-            {{- if and .Values.config.memory.limits .Values.sizing.nats.memory.limit }}
-            memory: "{{ int .Values.sizing.nats.memory.limit }}Mi"
+            {{- if and .Values.config.memory.limits .Values.sizing.consul.memory.limit }}
+            memory: "{{ int .Values.sizing.consul.memory.limit }}Mi"
             {{- end }}
 
-            {{- if and .Values.config.cpu.limits .Values.sizing.nats.cpu.limit }}
-            cpu: "{{ int .Values.sizing.nats.cpu.limit }}m"
+            {{- if and .Values.config.cpu.limits .Values.sizing.consul.cpu.limit }}
+            cpu: "{{ int .Values.sizing.consul.cpu.limit }}m"
             {{- end }}
 
         securityContext:
-          {{- if has "ALL" .Values.sizing.nats.capabilities }}
+          {{- if has "ALL" .Values.sizing.consul.capabilities }}
           privileged: true
           {{- end }}
 
-          {{- if not (has "ALL" .Values.sizing.nats.capabilities) }}
+          {{- if not (has "ALL" .Values.sizing.consul.capabilities) }}
           capabilities:
             add:
-            {{- range .Values.sizing.nats.capabilities }}
+            {{- range .Values.sizing.consul.capabilities }}
             - {{ . | upper }}
             {{- end }}
           {{- end }}
@@ -238,57 +209,84 @@ spec:
   updateStrategy:
     type: "RollingUpdate"
   {{- end }}
+{{- end }}
 ---
+{{- if gt (int .Values.sizing.consul.count) 0 }}
 apiVersion: "v1"
 items:
 - apiVersion: "v1"
   kind: "Service"
   metadata:
-    name: "nats-set"
+    name: "consul-set"
   spec:
     clusterIP: "None"
     ports:
-    - name: "nats"
-      port: 4222
+    - name: "consul-server"
+      port: 8300
       protocol: "TCP"
       targetPort: 0
-    - name: "nats-routes"
-      port: 4223
+    - name: "consul-http"
+      port: 8500
       protocol: "TCP"
+      targetPort: 0
+    - name: "serf-tcp"
+      port: 8301
+      protocol: "TCP"
+      targetPort: 0
+    - name: "serf-udp"
+      port: 8301
+      protocol: "UDP"
       targetPort: 0
     selector:
-      skiff-role-name: "nats"
+      skiff-role-name: "consul"
 - apiVersion: "v1"
   kind: "Service"
   metadata:
-    name: "nats-nats-set"
+    name: "consul-consul-agent-set"
   spec:
     clusterIP: "None"
     ports:
-    - name: "nats"
-      port: 4222
+    - name: "consul-server"
+      port: 8300
       protocol: "TCP"
       targetPort: 0
-    - name: "nats-routes"
-      port: 4223
+    - name: "consul-http"
+      port: 8500
       protocol: "TCP"
+      targetPort: 0
+    - name: "serf-tcp"
+      port: 8301
+      protocol: "TCP"
+      targetPort: 0
+    - name: "serf-udp"
+      port: 8301
+      protocol: "UDP"
       targetPort: 0
     selector:
-      skiff-role-name: "nats"
+      skiff-role-name: "consul"
 - apiVersion: "v1"
   kind: "Service"
   metadata:
-    name: "nats-nats"
+    name: "consul-consul-agent"
   spec:
     ports:
-    - name: "nats"
-      port: 4222
+    - name: "consul-server"
+      port: 8300
       protocol: "TCP"
-      targetPort: 4222
-    - name: "nats-routes"
-      port: 4223
+      targetPort: 8300
+    - name: "consul-http"
+      port: 8500
       protocol: "TCP"
-      targetPort: 4223
+      targetPort: 8500
+    - name: "serf-tcp"
+      port: 8301
+      protocol: "TCP"
+      targetPort: 8301
+    - name: "serf-udp"
+      port: 8301
+      protocol: "UDP"
+      targetPort: 8301
     selector:
-      skiff-role-name: "nats"
+      skiff-role-name: "consul"
 kind: "List"
+{{- end }}

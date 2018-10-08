@@ -48,12 +48,6 @@ metadata:
   name: "log-api"
   labels:
     skiff-role-name: "log-api"
-    app.kubernetes.io/component: "log-api"
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/name: {{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-    app.kubernetes.io/version: {{ .Chart.AppVersion }}
-    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 spec:
   podManagementPolicy: "Parallel"
   replicas: {{ if and .Values.config.HA (eq (int .Values.sizing.log_api.count) 1) -}} 2 {{- else -}} {{ .Values.sizing.log_api.count }} {{- end }}
@@ -63,12 +57,6 @@ spec:
       name: "log-api"
       labels:
         skiff-role-name: "log-api"
-        app.kubernetes.io/component: "log-api"
-        app.kubernetes.io/instance: {{ .Release.Name }}
-        app.kubernetes.io/managed-by: {{ .Release.Service }}
-        app.kubernetes.io/name: {{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-        app.kubernetes.io/version: {{ .Chart.AppVersion }}
-        helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
     spec:
@@ -93,8 +81,6 @@ spec:
           value: {{if ne (typeOf .Values.env.CATS_SUITES) "<nil>"}}{{if has (kindOf .Values.env.CATS_SUITES) (list "map" "slice")}}{{.Values.env.CATS_SUITES | toJson | quote}}{{else}}{{.Values.env.CATS_SUITES | quote}}{{end}}{{else}}""{{end}}
         - name: "DOMAIN"
           value: {{if ne (typeOf .Values.env.DOMAIN) "<nil>"}}{{if has (kindOf .Values.env.DOMAIN) (list "map" "slice")}}{{.Values.env.DOMAIN | toJson | quote}}{{else}}{{.Values.env.DOMAIN | quote}}{{end}}{{else}}{{fail "env.DOMAIN has not been set"}}{{end}}
-        - name: "GARDEN_ROOTFS_DRIVER"
-          value: {{if ne (typeOf .Values.env.GARDEN_ROOTFS_DRIVER) "<nil>"}}{{if has (kindOf .Values.env.GARDEN_ROOTFS_DRIVER) (list "map" "slice")}}{{.Values.env.GARDEN_ROOTFS_DRIVER | toJson | quote}}{{else}}{{.Values.env.GARDEN_ROOTFS_DRIVER | quote}}{{end}}{{else}}{{fail "env.GARDEN_ROOTFS_DRIVER has not been set"}}{{end}}
 
         {{- if not .Values.secrets.INTERNAL_CA_CERT }}
         - name: "INTERNAL_CA_CERT"
@@ -139,20 +125,20 @@ spec:
               name: "secrets"
         {{- end }}
 
-        {{- if .Values.secrets.LOGGREGATOR_AGENT_CERT_KEY }}
-        - name: "LOGGREGATOR_AGENT_CERT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "loggregator-agent-cert-key"
-              name: "secrets"
-        {{- end }}
-
         {{- if not .Values.secrets.LOGGREGATOR_AGENT_CERT_KEY }}
         - name: "LOGGREGATOR_AGENT_CERT_KEY"
           valueFrom:
             secretKeyRef:
               key: "loggregator-agent-cert-key"
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if .Values.secrets.LOGGREGATOR_AGENT_CERT_KEY }}
+        - name: "LOGGREGATOR_AGENT_CERT_KEY"
+          valueFrom:
+            secretKeyRef:
+              key: "loggregator-agent-cert-key"
+              name: "secrets"
         {{- end }}
 
         {{- if not .Values.secrets.MONIT_PASSWORD }}
@@ -242,20 +228,20 @@ spec:
               name: "secrets"
         {{- end }}
 
-        {{- if .Values.secrets.TRAFFICCONTROLLER_CERT_KEY }}
-        - name: "TRAFFICCONTROLLER_CERT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "trafficcontroller-cert-key"
-              name: "secrets"
-        {{- end }}
-
         {{- if not .Values.secrets.TRAFFICCONTROLLER_CERT_KEY }}
         - name: "TRAFFICCONTROLLER_CERT_KEY"
           valueFrom:
             secretKeyRef:
               key: "trafficcontroller-cert-key"
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if .Values.secrets.TRAFFICCONTROLLER_CERT_KEY }}
+        - name: "TRAFFICCONTROLLER_CERT_KEY"
+          valueFrom:
+            secretKeyRef:
+              key: "trafficcontroller-cert-key"
+              name: "secrets"
         {{- end }}
 
         - name: "UAA_CA_CERT"
@@ -284,7 +270,7 @@ spec:
           value: {{if ne (typeOf .Values.env.UAA_HOST) "<nil>"}}{{if has (kindOf .Values.env.UAA_HOST) (list "map" "slice")}}{{.Values.env.UAA_HOST | toJson | quote}}{{else}}{{.Values.env.UAA_HOST | quote}}{{end}}{{else}}{{fail "env.UAA_HOST has not been set"}}{{end}}
         - name: "UAA_PORT"
           value: {{if ne (typeOf .Values.env.UAA_PORT) "<nil>"}}{{if has (kindOf .Values.env.UAA_PORT) (list "map" "slice")}}{{.Values.env.UAA_PORT | toJson | quote}}{{else}}{{.Values.env.UAA_PORT | quote}}{{end}}{{else}}""{{end}}
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-log-api:a77416790777bb7d60a00113bfd9b1f2dd7b6311"
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-log-api:ed3b8451b62c242897d0a03570b083096febc5a5"
         lifecycle:
           preStop:
             exec:

@@ -14,26 +14,12 @@ apiVersion: "batch/v1"
 kind: "Job"
 metadata:
   name: "post-deployment-setup-{{ .Release.Revision }}"
-  labels:
-    skiff-role-name: "post-deployment-setup-{{ .Release.Revision }}"
-    app.kubernetes.io/component: "post-deployment-setup-{{ .Release.Revision }}"
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/name: {{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-    app.kubernetes.io/version: {{ .Chart.AppVersion }}
-    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 spec:
   template:
     metadata:
       name: "post-deployment-setup"
       labels:
         skiff-role-name: "post-deployment-setup"
-        app.kubernetes.io/component: "post-deployment-setup"
-        app.kubernetes.io/instance: {{ .Release.Name }}
-        app.kubernetes.io/managed-by: {{ .Release.Service }}
-        app.kubernetes.io/name: {{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-        app.kubernetes.io/version: {{ .Chart.AppVersion }}
-        helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
     spec:
@@ -64,8 +50,10 @@ spec:
             secretKeyRef:
               key: "cluster-admin-password"
               name: "secrets"
-        - name: "GARDEN_ROOTFS_DRIVER"
-          value: {{if ne (typeOf .Values.env.GARDEN_ROOTFS_DRIVER) "<nil>"}}{{if has (kindOf .Values.env.GARDEN_ROOTFS_DRIVER) (list "map" "slice")}}{{.Values.env.GARDEN_ROOTFS_DRIVER | toJson | quote}}{{else}}{{.Values.env.GARDEN_ROOTFS_DRIVER | quote}}{{end}}{{else}}{{fail "env.GARDEN_ROOTFS_DRIVER has not been set"}}{{end}}
+        - name: "EIRINI_KUBE_CONFIG"
+          value: {{if ne (typeOf .Values.env.EIRINI_KUBE_CONFIG) "<nil>"}}{{if has (kindOf .Values.env.EIRINI_KUBE_CONFIG) (list "map" "slice")}}{{.Values.env.EIRINI_KUBE_CONFIG | toJson | quote}}{{else}}{{.Values.env.EIRINI_KUBE_CONFIG | quote}}{{end}}{{else}}""{{end}}
+        - name: "EIRINI_KUBE_NAMESPACE"
+          value: {{if ne (typeOf .Values.env.EIRINI_KUBE_NAMESPACE) "<nil>"}}{{if has (kindOf .Values.env.EIRINI_KUBE_NAMESPACE) (list "map" "slice")}}{{.Values.env.EIRINI_KUBE_NAMESPACE | toJson | quote}}{{else}}{{.Values.env.EIRINI_KUBE_NAMESPACE | quote}}{{end}}{{else}}""{{end}}
         - name: "HTTPS_PROXY"
           value: {{if ne (typeOf .Values.env.HTTPS_PROXY) "<nil>"}}{{if has (kindOf .Values.env.HTTPS_PROXY) (list "map" "slice")}}{{.Values.env.HTTPS_PROXY | toJson | quote}}{{else}}{{.Values.env.HTTPS_PROXY | quote}}{{end}}{{else}}""{{end}}
         - name: "HTTP_PROXY"
@@ -94,14 +82,6 @@ spec:
             fieldRef:
               fieldPath: "metadata.namespace"
 
-        {{- if .Values.secrets.MONIT_PASSWORD }}
-        - name: "MONIT_PASSWORD"
-          valueFrom:
-            secretKeyRef:
-              key: "monit-password"
-              name: "secrets"
-        {{- end }}
-
         {{- if not .Values.secrets.MONIT_PASSWORD }}
         - name: "MONIT_PASSWORD"
           valueFrom:
@@ -110,16 +90,16 @@ spec:
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
-        - name: "NO_PROXY"
-          value: {{if ne (typeOf .Values.env.NO_PROXY) "<nil>"}}{{if has (kindOf .Values.env.NO_PROXY) (list "map" "slice")}}{{.Values.env.NO_PROXY | toJson | quote}}{{else}}{{.Values.env.NO_PROXY | quote}}{{end}}{{else}}""{{end}}
-
-        {{- if .Values.secrets.PERSI_NFS_BROKER_PASSWORD }}
-        - name: "PERSI_NFS_BROKER_PASSWORD"
+        {{- if .Values.secrets.MONIT_PASSWORD }}
+        - name: "MONIT_PASSWORD"
           valueFrom:
             secretKeyRef:
-              key: "persi-nfs-broker-password"
+              key: "monit-password"
               name: "secrets"
         {{- end }}
+
+        - name: "NO_PROXY"
+          value: {{if ne (typeOf .Values.env.NO_PROXY) "<nil>"}}{{if has (kindOf .Values.env.NO_PROXY) (list "map" "slice")}}{{.Values.env.NO_PROXY | toJson | quote}}{{else}}{{.Values.env.NO_PROXY | quote}}{{end}}{{else}}""{{end}}
 
         {{- if not .Values.secrets.PERSI_NFS_BROKER_PASSWORD }}
         - name: "PERSI_NFS_BROKER_PASSWORD"
@@ -127,6 +107,14 @@ spec:
             secretKeyRef:
               key: "persi-nfs-broker-password"
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if .Values.secrets.PERSI_NFS_BROKER_PASSWORD }}
+        - name: "PERSI_NFS_BROKER_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "persi-nfs-broker-password"
+              name: "secrets"
         {{- end }}
 
         - name: "SCF_LOG_HOST"
@@ -178,14 +166,6 @@ spec:
               name: "secrets"
         {{- end }}
 
-        {{- if not .Values.secrets.UAA_CLIENTS_CC_SERVICE_DASHBOARDS_CLIENT_SECRET }}
-        - name: "UAA_CLIENTS_CC_SERVICE_DASHBOARDS_CLIENT_SECRET"
-          valueFrom:
-            secretKeyRef:
-              key: "uaa-clients-cc-service-dashboards-client-secret"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
         {{- if .Values.secrets.UAA_CLIENTS_CC_SERVICE_DASHBOARDS_CLIENT_SECRET }}
         - name: "UAA_CLIENTS_CC_SERVICE_DASHBOARDS_CLIENT_SECRET"
           valueFrom:
@@ -194,12 +174,12 @@ spec:
               name: "secrets"
         {{- end }}
 
-        {{- if .Values.secrets.UAA_CLIENTS_CC_SERVICE_KEY_CLIENT_SECRET }}
-        - name: "UAA_CLIENTS_CC_SERVICE_KEY_CLIENT_SECRET"
+        {{- if not .Values.secrets.UAA_CLIENTS_CC_SERVICE_DASHBOARDS_CLIENT_SECRET }}
+        - name: "UAA_CLIENTS_CC_SERVICE_DASHBOARDS_CLIENT_SECRET"
           valueFrom:
             secretKeyRef:
-              key: "uaa-clients-cc-service-key-client-secret"
-              name: "secrets"
+              key: "uaa-clients-cc-service-dashboards-client-secret"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
         {{- if not .Values.secrets.UAA_CLIENTS_CC_SERVICE_KEY_CLIENT_SECRET }}
@@ -208,6 +188,14 @@ spec:
             secretKeyRef:
               key: "uaa-clients-cc-service-key-client-secret"
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if .Values.secrets.UAA_CLIENTS_CC_SERVICE_KEY_CLIENT_SECRET }}
+        - name: "UAA_CLIENTS_CC_SERVICE_KEY_CLIENT_SECRET"
+          valueFrom:
+            secretKeyRef:
+              key: "uaa-clients-cc-service-key-client-secret"
+              name: "secrets"
         {{- end }}
 
         {{- if not .Values.secrets.UAA_CLIENTS_CF_USB_SECRET }}
@@ -226,14 +214,6 @@ spec:
               name: "secrets"
         {{- end }}
 
-        {{- if not .Values.secrets.UAA_CLIENTS_CLOUD_CONTROLLER_USERNAME_LOOKUP_SECRET }}
-        - name: "UAA_CLIENTS_CLOUD_CONTROLLER_USERNAME_LOOKUP_SECRET"
-          valueFrom:
-            secretKeyRef:
-              key: "uaa-clients-cloud-controller-username-lookup-secret"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
         {{- if .Values.secrets.UAA_CLIENTS_CLOUD_CONTROLLER_USERNAME_LOOKUP_SECRET }}
         - name: "UAA_CLIENTS_CLOUD_CONTROLLER_USERNAME_LOOKUP_SECRET"
           valueFrom:
@@ -242,12 +222,12 @@ spec:
               name: "secrets"
         {{- end }}
 
-        {{- if .Values.secrets.UAA_CLIENTS_CREDHUB_USER_CLI_SECRET }}
-        - name: "UAA_CLIENTS_CREDHUB_USER_CLI_SECRET"
+        {{- if not .Values.secrets.UAA_CLIENTS_CLOUD_CONTROLLER_USERNAME_LOOKUP_SECRET }}
+        - name: "UAA_CLIENTS_CLOUD_CONTROLLER_USERNAME_LOOKUP_SECRET"
           valueFrom:
             secretKeyRef:
-              key: "uaa-clients-credhub-user-cli-secret"
-              name: "secrets"
+              key: "uaa-clients-cloud-controller-username-lookup-secret"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
         {{- if not .Values.secrets.UAA_CLIENTS_CREDHUB_USER_CLI_SECRET }}
@@ -258,19 +238,11 @@ spec:
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
-        {{- if not .Values.secrets.UAA_CLIENTS_DIEGO_SSH_PROXY_SECRET }}
-        - name: "UAA_CLIENTS_DIEGO_SSH_PROXY_SECRET"
+        {{- if .Values.secrets.UAA_CLIENTS_CREDHUB_USER_CLI_SECRET }}
+        - name: "UAA_CLIENTS_CREDHUB_USER_CLI_SECRET"
           valueFrom:
             secretKeyRef:
-              key: "uaa-clients-diego-ssh-proxy-secret"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
-        {{- if .Values.secrets.UAA_CLIENTS_DIEGO_SSH_PROXY_SECRET }}
-        - name: "UAA_CLIENTS_DIEGO_SSH_PROXY_SECRET"
-          valueFrom:
-            secretKeyRef:
-              key: "uaa-clients-diego-ssh-proxy-secret"
+              key: "uaa-clients-credhub-user-cli-secret"
               name: "secrets"
         {{- end }}
 
@@ -374,7 +346,7 @@ spec:
           value: {{if ne (typeOf .Values.env.UAA_HOST) "<nil>"}}{{if has (kindOf .Values.env.UAA_HOST) (list "map" "slice")}}{{.Values.env.UAA_HOST | toJson | quote}}{{else}}{{.Values.env.UAA_HOST | quote}}{{end}}{{else}}{{fail "env.UAA_HOST has not been set"}}{{end}}
         - name: "UAA_PORT"
           value: {{if ne (typeOf .Values.env.UAA_PORT) "<nil>"}}{{if has (kindOf .Values.env.UAA_PORT) (list "map" "slice")}}{{.Values.env.UAA_PORT | toJson | quote}}{{else}}{{.Values.env.UAA_PORT | quote}}{{end}}{{else}}""{{end}}
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-post-deployment-setup:8887c65d5b0b06ced94cee93c55179eb19009e95"
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-post-deployment-setup:b8c9ea10b4bad26d30d51a583c65ae6f73297103"
         lifecycle:
           preStop:
             exec:

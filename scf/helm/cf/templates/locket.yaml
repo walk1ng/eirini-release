@@ -1,5 +1,5 @@
 ---
-# The diego-brain instance group contains the following jobs:
+# The locket instance group contains the following jobs:
 #
 # - global-properties: Dummy BOSH job used to host global parameters that are
 #   required to configure SCF
@@ -9,18 +9,18 @@
 # - patch-properties: Dummy BOSH job used to host parameters that are used in
 #   SCF patches for upstream bugs
 #
-# Also: auctioneer, cfdot, loggregator_agent
+# Also: loggregator_agent, locket
 
-{{- if gt (int .Values.sizing.diego_brain.count) 3 }}
-_maxReplicas: {{ fail "diego_brain cannot have more than 3 instances" }}
+{{- if gt (int .Values.sizing.locket.count) 3 }}
+_maxReplicas: {{ fail "locket cannot have more than 3 instances" }}
 {{- end }}
 
-{{- if and .Values.config.HA (and (ne (int .Values.sizing.diego_brain.count) 1) (lt (int .Values.sizing.diego_brain.count) 2)) }}
-_minHAReplicas: {{ fail "diego_brain must have at least 2 instances for HA" }}
+{{- if and .Values.config.HA (and (ne (int .Values.sizing.locket.count) 1) (lt (int .Values.sizing.locket.count) 2)) }}
+_minHAReplicas: {{ fail "locket must have at least 2 instances for HA" }}
 {{- end }}
 
-{{- if lt (int .Values.sizing.diego_brain.count) 1 }}
-_minReplicas: {{ fail "diego_brain must have at least 1 instances" }}
+{{- if lt (int .Values.sizing.locket.count) 1 }}
+_minReplicas: {{ fail "locket must have at least 1 instances" }}
 {{- end }}
 
 {{- if .Values.sizing.HA }}
@@ -46,30 +46,18 @@ _moved_sizing_memory_requests: {{ if .Values.sizing.memory.requests }} {{ fail "
 apiVersion: "apps/v1beta1"
 kind: "StatefulSet"
 metadata:
-  name: "diego-brain"
+  name: "locket"
   labels:
-    skiff-role-name: "diego-brain"
-    app.kubernetes.io/component: "diego-brain"
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/name: {{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-    app.kubernetes.io/version: {{ .Chart.AppVersion }}
-    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    skiff-role-name: "locket"
 spec:
   podManagementPolicy: "Parallel"
-  replicas: {{ if and .Values.config.HA (eq (int .Values.sizing.diego_brain.count) 1) -}} 2 {{- else -}} {{ .Values.sizing.diego_brain.count }} {{- end }}
-  serviceName: "diego-brain-set"
+  replicas: {{ if and .Values.config.HA (eq (int .Values.sizing.locket.count) 1) -}} 2 {{- else -}} {{ .Values.sizing.locket.count }} {{- end }}
+  serviceName: "locket-set"
   template:
     metadata:
-      name: "diego-brain"
+      name: "locket"
       labels:
-        skiff-role-name: "diego-brain"
-        app.kubernetes.io/component: "diego-brain"
-        app.kubernetes.io/instance: {{ .Release.Name }}
-        app.kubernetes.io/managed-by: {{ .Release.Service }}
-        app.kubernetes.io/name: {{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-        app.kubernetes.io/version: {{ .Chart.AppVersion }}
-        helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+        skiff-role-name: "locket"
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
     spec:
@@ -82,146 +70,48 @@ spec:
                 - key: "skiff-role-name"
                   operator: "In"
                   values:
-                  - "diego-brain"
+                  - "locket"
               topologyKey: "beta.kubernetes.io/os"
             weight: 100
-        {{- if .Values.sizing.diego_brain.affinity.nodeAffinity }}
-        nodeAffinity: {{ toJson .Values.sizing.diego_brain.affinity.nodeAffinity }}
+        {{- if .Values.sizing.locket.affinity.nodeAffinity }}
+        nodeAffinity: {{ toJson .Values.sizing.locket.affinity.nodeAffinity }}
         {{- end }}
       containers:
       - env:
-        {{- if not .Values.secrets.AUCTIONEER_REP_CERT }}
-        - name: "AUCTIONEER_REP_CERT"
-          valueFrom:
-            secretKeyRef:
-              key: "auctioneer-rep-cert"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
-        {{- if .Values.secrets.AUCTIONEER_REP_CERT }}
-        - name: "AUCTIONEER_REP_CERT"
-          valueFrom:
-            secretKeyRef:
-              key: "auctioneer-rep-cert"
-              name: "secrets"
-        {{- end }}
-
-        {{- if not .Values.secrets.AUCTIONEER_REP_CERT_KEY }}
-        - name: "AUCTIONEER_REP_CERT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "auctioneer-rep-cert-key"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
-        {{- if .Values.secrets.AUCTIONEER_REP_CERT_KEY }}
-        - name: "AUCTIONEER_REP_CERT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "auctioneer-rep-cert-key"
-              name: "secrets"
-        {{- end }}
-
-        {{- if not .Values.secrets.AUCTIONEER_SERVER_CERT }}
-        - name: "AUCTIONEER_SERVER_CERT"
-          valueFrom:
-            secretKeyRef:
-              key: "auctioneer-server-cert"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
-        {{- if .Values.secrets.AUCTIONEER_SERVER_CERT }}
-        - name: "AUCTIONEER_SERVER_CERT"
-          valueFrom:
-            secretKeyRef:
-              key: "auctioneer-server-cert"
-              name: "secrets"
-        {{- end }}
-
-        {{- if not .Values.secrets.AUCTIONEER_SERVER_CERT_KEY }}
-        - name: "AUCTIONEER_SERVER_CERT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "auctioneer-server-cert-key"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
-        {{- if .Values.secrets.AUCTIONEER_SERVER_CERT_KEY }}
-        - name: "AUCTIONEER_SERVER_CERT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "auctioneer-server-cert-key"
-              name: "secrets"
-        {{- end }}
-
-        {{- if not .Values.secrets.BBS_CLIENT_CRT }}
-        - name: "BBS_CLIENT_CRT"
-          valueFrom:
-            secretKeyRef:
-              key: "bbs-client-crt"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
-        {{- if .Values.secrets.BBS_CLIENT_CRT }}
-        - name: "BBS_CLIENT_CRT"
-          valueFrom:
-            secretKeyRef:
-              key: "bbs-client-crt"
-              name: "secrets"
-        {{- end }}
-
-        {{- if not .Values.secrets.BBS_CLIENT_CRT_KEY }}
-        - name: "BBS_CLIENT_CRT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "bbs-client-crt-key"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
-        {{- if .Values.secrets.BBS_CLIENT_CRT_KEY }}
-        - name: "BBS_CLIENT_CRT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "bbs-client-crt-key"
-              name: "secrets"
-        {{- end }}
-
-        {{- if not .Values.secrets.BBS_REP_CERT }}
-        - name: "BBS_REP_CERT"
-          valueFrom:
-            secretKeyRef:
-              key: "bbs-rep-cert"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
-        {{- if .Values.secrets.BBS_REP_CERT }}
-        - name: "BBS_REP_CERT"
-          valueFrom:
-            secretKeyRef:
-              key: "bbs-rep-cert"
-              name: "secrets"
-        {{- end }}
-
-        {{- if not .Values.secrets.BBS_REP_CERT_KEY }}
-        - name: "BBS_REP_CERT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "bbs-rep-cert-key"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
-        {{- if .Values.secrets.BBS_REP_CERT_KEY }}
-        - name: "BBS_REP_CERT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "bbs-rep-cert-key"
-              name: "secrets"
-        {{- end }}
-
         - name: "CATS_SUITES"
           value: {{if ne (typeOf .Values.env.CATS_SUITES) "<nil>"}}{{if has (kindOf .Values.env.CATS_SUITES) (list "map" "slice")}}{{.Values.env.CATS_SUITES | toJson | quote}}{{else}}{{.Values.env.CATS_SUITES | quote}}{{end}}{{else}}""{{end}}
-        - name: "GARDEN_ROOTFS_DRIVER"
-          value: {{if ne (typeOf .Values.env.GARDEN_ROOTFS_DRIVER) "<nil>"}}{{if has (kindOf .Values.env.GARDEN_ROOTFS_DRIVER) (list "map" "slice")}}{{.Values.env.GARDEN_ROOTFS_DRIVER | toJson | quote}}{{else}}{{.Values.env.GARDEN_ROOTFS_DRIVER | quote}}{{end}}{{else}}{{fail "env.GARDEN_ROOTFS_DRIVER has not been set"}}{{end}}
+
+        {{- if not .Values.secrets.DIEGO_CLIENT_CERT }}
+        - name: "DIEGO_CLIENT_CERT"
+          valueFrom:
+            secretKeyRef:
+              key: "diego-client-cert"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if .Values.secrets.DIEGO_CLIENT_CERT }}
+        - name: "DIEGO_CLIENT_CERT"
+          valueFrom:
+            secretKeyRef:
+              key: "diego-client-cert"
+              name: "secrets"
+        {{- end }}
+
+        {{- if not .Values.secrets.DIEGO_CLIENT_CERT_KEY }}
+        - name: "DIEGO_CLIENT_CERT_KEY"
+          valueFrom:
+            secretKeyRef:
+              key: "diego-client-cert-key"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if .Values.secrets.DIEGO_CLIENT_CERT_KEY }}
+        - name: "DIEGO_CLIENT_CERT_KEY"
+          valueFrom:
+            secretKeyRef:
+              key: "diego-client-cert-key"
+              name: "secrets"
+        {{- end }}
 
         {{- if not .Values.secrets.INTERNAL_CA_CERT }}
         - name: "INTERNAL_CA_CERT"
@@ -280,14 +170,6 @@ spec:
               name: "secrets"
         {{- end }}
 
-        {{- if not .Values.secrets.LOGGREGATOR_CLIENT_CERT }}
-        - name: "LOGGREGATOR_CLIENT_CERT"
-          valueFrom:
-            secretKeyRef:
-              key: "loggregator-client-cert"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
         {{- if .Values.secrets.LOGGREGATOR_CLIENT_CERT }}
         - name: "LOGGREGATOR_CLIENT_CERT"
           valueFrom:
@@ -296,11 +178,11 @@ spec:
               name: "secrets"
         {{- end }}
 
-        {{- if not .Values.secrets.LOGGREGATOR_CLIENT_CERT_KEY }}
-        - name: "LOGGREGATOR_CLIENT_CERT_KEY"
+        {{- if not .Values.secrets.LOGGREGATOR_CLIENT_CERT }}
+        - name: "LOGGREGATOR_CLIENT_CERT"
           valueFrom:
             secretKeyRef:
-              key: "loggregator-client-cert-key"
+              key: "loggregator-client-cert"
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
@@ -310,6 +192,14 @@ spec:
             secretKeyRef:
               key: "loggregator-client-cert-key"
               name: "secrets"
+        {{- end }}
+
+        {{- if not .Values.secrets.LOGGREGATOR_CLIENT_CERT_KEY }}
+        - name: "LOGGREGATOR_CLIENT_CERT_KEY"
+          valueFrom:
+            secretKeyRef:
+              key: "loggregator-client-cert-key"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
         - name: "LOG_LEVEL"
@@ -331,6 +221,22 @@ spec:
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
+        {{- if .Values.secrets.MYSQL_DIEGO_LOCKET_PASSWORD }}
+        - name: "MYSQL_DIEGO_LOCKET_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "mysql-diego-locket-password"
+              name: "secrets"
+        {{- end }}
+
+        {{- if not .Values.secrets.MYSQL_DIEGO_LOCKET_PASSWORD }}
+        - name: "MYSQL_DIEGO_LOCKET_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "mysql-diego-locket-password"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
         - name: "SCF_LOG_HOST"
           value: {{if ne (typeOf .Values.env.SCF_LOG_HOST) "<nil>"}}{{if has (kindOf .Values.env.SCF_LOG_HOST) (list "map" "slice")}}{{.Values.env.SCF_LOG_HOST | toJson | quote}}{{else}}{{.Values.env.SCF_LOG_HOST | quote}}{{end}}{{else}}""{{end}}
         - name: "SCF_LOG_PORT"
@@ -342,52 +248,50 @@ spec:
             secretKeyRef:
               key: "uaa-ca-cert"
               name: "secrets"
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-diego-brain:1b0dd5cefcdad6ce613d14435e4a629caf7ad540"
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-locket:dd5a5c11d4a7f04a733b45f5efa22ff64ba200b0"
         lifecycle:
           preStop:
             exec:
               command:
               - "/opt/fissile/pre-stop.sh"
         livenessProbe: ~
-        name: "diego-brain"
+        name: "locket"
         ports:
-        - containerPort: 9016
-          name: "diego-auction"
+        - containerPort: 8891
+          name: "locket"
           protocol: "TCP"
         readinessProbe:
           exec:
             command:
-            - "/usr/bin/env"
-            - "FISSILE_ACTIVE_PASSIVE_PROBE=head -c0 </dev/tcp/${HOSTNAME}/9016"
             - "/opt/fissile/readiness-probe.sh"
         resources:
           requests:
-            {{- if and .Values.config.memory.requests .Values.sizing.diego_brain.memory.request }}
-            memory: "{{ int .Values.sizing.diego_brain.memory.request }}Mi"
+            {{- if and .Values.config.memory.requests .Values.sizing.locket.memory.request }}
+            memory: "{{ int .Values.sizing.locket.memory.request }}Mi"
             {{- end }}
 
-            {{- if and .Values.config.cpu.requests .Values.sizing.diego_brain.cpu.request }}
-            cpu: "{{ int .Values.sizing.diego_brain.cpu.request }}m"
+            {{- if and .Values.config.cpu.requests .Values.sizing.locket.cpu.request }}
+            cpu: "{{ int .Values.sizing.locket.cpu.request }}m"
             {{- end }}
 
           limits:
-            {{- if and .Values.config.memory.limits .Values.sizing.diego_brain.memory.limit }}
-            memory: "{{ int .Values.sizing.diego_brain.memory.limit }}Mi"
+            {{- if and .Values.config.memory.limits .Values.sizing.locket.memory.limit }}
+            memory: "{{ int .Values.sizing.locket.memory.limit }}Mi"
             {{- end }}
 
-            {{- if and .Values.config.cpu.limits .Values.sizing.diego_brain.cpu.limit }}
-            cpu: "{{ int .Values.sizing.diego_brain.cpu.limit }}m"
+            {{- if and .Values.config.cpu.limits .Values.sizing.locket.cpu.limit }}
+            cpu: "{{ int .Values.sizing.locket.cpu.limit }}m"
             {{- end }}
 
         securityContext:
-          {{- if has "ALL" .Values.sizing.diego_brain.capabilities }}
+          {{- if has "ALL" .Values.sizing.locket.capabilities }}
           privileged: true
           {{- end }}
 
-          {{- if not (has "ALL" .Values.sizing.diego_brain.capabilities) }}
+          {{- if not (has "ALL" .Values.sizing.locket.capabilities) }}
           capabilities:
             add:
-            {{- range .Values.sizing.diego_brain.capabilities }}
+            {{- range .Values.sizing.locket.capabilities }}
             - {{ . | upper }}
             {{- end }}
           {{- end }}
@@ -409,42 +313,39 @@ items:
 - apiVersion: "v1"
   kind: "Service"
   metadata:
-    name: "diego-brain-set"
+    name: "locket-set"
   spec:
     clusterIP: "None"
     ports:
-    - name: "diego-auction"
-      port: 9016
+    - name: "locket"
+      port: 8891
       protocol: "TCP"
       targetPort: 0
     selector:
-      skiff-role-name: "diego-brain"
-      skiff-role-active: "true"
+      skiff-role-name: "locket"
 - apiVersion: "v1"
   kind: "Service"
   metadata:
-    name: "diego-brain-auctioneer-set"
+    name: "locket-locket-set"
   spec:
     clusterIP: "None"
     ports:
-    - name: "diego-auction"
-      port: 9016
+    - name: "locket"
+      port: 8891
       protocol: "TCP"
       targetPort: 0
     selector:
-      skiff-role-name: "diego-brain"
-      skiff-role-active: "true"
+      skiff-role-name: "locket"
 - apiVersion: "v1"
   kind: "Service"
   metadata:
-    name: "diego-brain-auctioneer"
+    name: "locket-locket"
   spec:
     ports:
-    - name: "diego-auction"
-      port: 9016
+    - name: "locket"
+      port: 8891
       protocol: "TCP"
-      targetPort: 9016
+      targetPort: 8891
     selector:
-      skiff-role-name: "diego-brain"
-      skiff-role-active: "true"
+      skiff-role-name: "locket"
 kind: "List"

@@ -24,13 +24,13 @@ roleRef:
 apiVersion: "rbac.authorization.k8s.io/v1"
 kind: "ClusterRoleBinding"
 metadata:
-  name: "{{ .Release.Namespace }}-default-privileged-binding-psp"
+  name: "default-privileged-binding-psp"
 subjects:
 - kind: "ServiceAccount"
   name: "default-privileged"
   namespace: {{ .Release.Namespace }}
 roleRef:
   kind: "ClusterRole"
-  name: "{{ .Release.Namespace }}-psp-role-privileged"
+  name: "psp-role-privileged"
   apiGroup: "rbac.authorization.k8s.io"
 {{- end }}

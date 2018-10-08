@@ -6,7 +6,7 @@
 #
 # - authorize-internal-ca: Install both internal and UAA CA certificates
 #
-# Also: tps, cc_uploader, loggregator_agent
+# Also: cc_uploader, loggregator_agent
 
 {{- if gt (int .Values.sizing.cc_uploader.count) 3 }}
 _maxReplicas: {{ fail "cc_uploader cannot have more than 3 instances" }}
@@ -46,12 +46,6 @@ metadata:
   name: "cc-uploader"
   labels:
     skiff-role-name: "cc-uploader"
-    app.kubernetes.io/component: "cc-uploader"
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/name: {{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-    app.kubernetes.io/version: {{ .Chart.AppVersion }}
-    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 spec:
   podManagementPolicy: "Parallel"
   replicas: {{ if and .Values.config.HA (eq (int .Values.sizing.cc_uploader.count) 1) -}} 2 {{- else -}} {{ .Values.sizing.cc_uploader.count }} {{- end }}
@@ -61,12 +55,6 @@ spec:
       name: "cc-uploader"
       labels:
         skiff-role-name: "cc-uploader"
-        app.kubernetes.io/component: "cc-uploader"
-        app.kubernetes.io/instance: {{ .Release.Name }}
-        app.kubernetes.io/managed-by: {{ .Release.Service }}
-        app.kubernetes.io/name: {{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-        app.kubernetes.io/version: {{ .Chart.AppVersion }}
-        helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
     spec:
@@ -87,38 +75,6 @@ spec:
         {{- end }}
       containers:
       - env:
-        {{- if not .Values.secrets.BBS_CLIENT_CRT }}
-        - name: "BBS_CLIENT_CRT"
-          valueFrom:
-            secretKeyRef:
-              key: "bbs-client-crt"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
-        {{- if .Values.secrets.BBS_CLIENT_CRT }}
-        - name: "BBS_CLIENT_CRT"
-          valueFrom:
-            secretKeyRef:
-              key: "bbs-client-crt"
-              name: "secrets"
-        {{- end }}
-
-        {{- if not .Values.secrets.BBS_CLIENT_CRT_KEY }}
-        - name: "BBS_CLIENT_CRT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "bbs-client-crt-key"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
-        {{- if .Values.secrets.BBS_CLIENT_CRT_KEY }}
-        - name: "BBS_CLIENT_CRT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "bbs-client-crt-key"
-              name: "secrets"
-        {{- end }}
-
         - name: "CATS_SUITES"
           value: {{if ne (typeOf .Values.env.CATS_SUITES) "<nil>"}}{{if has (kindOf .Values.env.CATS_SUITES) (list "map" "slice")}}{{.Values.env.CATS_SUITES | toJson | quote}}{{else}}{{.Values.env.CATS_SUITES | quote}}{{end}}{{else}}""{{end}}
 
@@ -186,9 +142,6 @@ spec:
               name: "secrets"
         {{- end }}
 
-        - name: "GARDEN_ROOTFS_DRIVER"
-          value: {{if ne (typeOf .Values.env.GARDEN_ROOTFS_DRIVER) "<nil>"}}{{if has (kindOf .Values.env.GARDEN_ROOTFS_DRIVER) (list "map" "slice")}}{{.Values.env.GARDEN_ROOTFS_DRIVER | toJson | quote}}{{else}}{{.Values.env.GARDEN_ROOTFS_DRIVER | quote}}{{end}}{{else}}{{fail "env.GARDEN_ROOTFS_DRIVER has not been set"}}{{end}}
-
         {{- if not .Values.secrets.INTERNAL_CA_CERT }}
         - name: "INTERNAL_CA_CERT"
           valueFrom:
@@ -214,14 +167,6 @@ spec:
         - name: "KUBE_AZ"
           value: "z1"
 
-        {{- if .Values.secrets.LOGGREGATOR_AGENT_CERT }}
-        - name: "LOGGREGATOR_AGENT_CERT"
-          valueFrom:
-            secretKeyRef:
-              key: "loggregator-agent-cert"
-              name: "secrets"
-        {{- end }}
-
         {{- if not .Values.secrets.LOGGREGATOR_AGENT_CERT }}
         - name: "LOGGREGATOR_AGENT_CERT"
           valueFrom:
@@ -230,11 +175,11 @@ spec:
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
-        {{- if .Values.secrets.LOGGREGATOR_AGENT_CERT_KEY }}
-        - name: "LOGGREGATOR_AGENT_CERT_KEY"
+        {{- if .Values.secrets.LOGGREGATOR_AGENT_CERT }}
+        - name: "LOGGREGATOR_AGENT_CERT"
           valueFrom:
             secretKeyRef:
-              key: "loggregator-agent-cert-key"
+              key: "loggregator-agent-cert"
               name: "secrets"
         {{- end }}
 
@@ -246,16 +191,16 @@ spec:
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
-        - name: "LOG_LEVEL"
-          value: {{if ne (typeOf .Values.env.LOG_LEVEL) "<nil>"}}{{if has (kindOf .Values.env.LOG_LEVEL) (list "map" "slice")}}{{.Values.env.LOG_LEVEL | toJson | quote}}{{else}}{{.Values.env.LOG_LEVEL | quote}}{{end}}{{else}}{{fail "env.LOG_LEVEL has not been set"}}{{end}}
-
-        {{- if not .Values.secrets.MONIT_PASSWORD }}
-        - name: "MONIT_PASSWORD"
+        {{- if .Values.secrets.LOGGREGATOR_AGENT_CERT_KEY }}
+        - name: "LOGGREGATOR_AGENT_CERT_KEY"
           valueFrom:
             secretKeyRef:
-              key: "monit-password"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+              key: "loggregator-agent-cert-key"
+              name: "secrets"
         {{- end }}
+
+        - name: "LOG_LEVEL"
+          value: {{if ne (typeOf .Values.env.LOG_LEVEL) "<nil>"}}{{if has (kindOf .Values.env.LOG_LEVEL) (list "map" "slice")}}{{.Values.env.LOG_LEVEL | toJson | quote}}{{else}}{{.Values.env.LOG_LEVEL | quote}}{{end}}{{else}}{{fail "env.LOG_LEVEL has not been set"}}{{end}}
 
         {{- if .Values.secrets.MONIT_PASSWORD }}
         - name: "MONIT_PASSWORD"
@@ -265,51 +210,26 @@ spec:
               name: "secrets"
         {{- end }}
 
+        {{- if not .Values.secrets.MONIT_PASSWORD }}
+        - name: "MONIT_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "monit-password"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
         - name: "SCF_LOG_HOST"
           value: {{if ne (typeOf .Values.env.SCF_LOG_HOST) "<nil>"}}{{if has (kindOf .Values.env.SCF_LOG_HOST) (list "map" "slice")}}{{.Values.env.SCF_LOG_HOST | toJson | quote}}{{else}}{{.Values.env.SCF_LOG_HOST | quote}}{{end}}{{else}}""{{end}}
         - name: "SCF_LOG_PORT"
           value: {{if ne (typeOf .Values.env.SCF_LOG_PORT) "<nil>"}}{{if has (kindOf .Values.env.SCF_LOG_PORT) (list "map" "slice")}}{{.Values.env.SCF_LOG_PORT | toJson | quote}}{{else}}{{.Values.env.SCF_LOG_PORT | quote}}{{end}}{{else}}""{{end}}
         - name: "SCF_LOG_PROTOCOL"
           value: {{if ne (typeOf .Values.env.SCF_LOG_PROTOCOL) "<nil>"}}{{if has (kindOf .Values.env.SCF_LOG_PROTOCOL) (list "map" "slice")}}{{.Values.env.SCF_LOG_PROTOCOL | toJson | quote}}{{else}}{{.Values.env.SCF_LOG_PROTOCOL | quote}}{{end}}{{else}}{{fail "env.SCF_LOG_PROTOCOL has not been set"}}{{end}}
-
-        {{- if not .Values.secrets.TPS_CC_CLIENT_CRT }}
-        - name: "TPS_CC_CLIENT_CRT"
-          valueFrom:
-            secretKeyRef:
-              key: "tps-cc-client-crt"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
-        {{- if .Values.secrets.TPS_CC_CLIENT_CRT }}
-        - name: "TPS_CC_CLIENT_CRT"
-          valueFrom:
-            secretKeyRef:
-              key: "tps-cc-client-crt"
-              name: "secrets"
-        {{- end }}
-
-        {{- if not .Values.secrets.TPS_CC_CLIENT_CRT_KEY }}
-        - name: "TPS_CC_CLIENT_CRT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "tps-cc-client-crt-key"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
-        {{- if .Values.secrets.TPS_CC_CLIENT_CRT_KEY }}
-        - name: "TPS_CC_CLIENT_CRT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "tps-cc-client-crt-key"
-              name: "secrets"
-        {{- end }}
-
         - name: "UAA_CA_CERT"
           valueFrom:
             secretKeyRef:
               key: "uaa-ca-cert"
               name: "secrets"
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-cc-uploader:708f0f3deb3d5a5f9bca5c067cc74a15f1f74aa4"
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-cc-uploader:69c324c106f2bb443e856c5e6f8499914f46021c"
         lifecycle:
           preStop:
             exec:
