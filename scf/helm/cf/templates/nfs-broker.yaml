@@ -6,7 +6,7 @@
 #
 # - authorize-internal-ca: Install both internal and UAA CA certificates
 #
-# Also: metron_agent, nfsbroker
+# Also: loggregator_agent, nfsbroker
 
 {{- if gt (int .Values.sizing.nfs_broker.count) 3 }}
 _maxReplicas: {{ fail "nfs_broker cannot have more than 3 instances" }}
@@ -46,6 +46,12 @@ metadata:
   name: "nfs-broker"
   labels:
     skiff-role-name: "nfs-broker"
+    app.kubernetes.io/component: "nfs-broker"
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 spec:
   podManagementPolicy: "OrderedReady"
   replicas: {{ if and .Values.config.HA (eq (int .Values.sizing.nfs_broker.count) 1) -}} 2 {{- else -}} {{ .Values.sizing.nfs_broker.count }} {{- end }}
@@ -55,6 +61,12 @@ spec:
       name: "nfs-broker"
       labels:
         skiff-role-name: "nfs-broker"
+        app.kubernetes.io/component: "nfs-broker"
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+        app.kubernetes.io/name: {{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+        app.kubernetes.io/version: {{ .Chart.AppVersion }}
+        helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
     spec:
@@ -105,35 +117,35 @@ spec:
         - name: "KUBE_AZ"
           value: "z1"
 
-        {{- if not .Values.secrets.METRON_CERT }}
-        - name: "METRON_CERT"
+        {{- if not .Values.secrets.LOGGREGATOR_AGENT_CERT }}
+        - name: "LOGGREGATOR_AGENT_CERT"
           valueFrom:
             secretKeyRef:
-              key: "metron-cert"
+              key: "loggregator-agent-cert"
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
-        {{- if .Values.secrets.METRON_CERT }}
-        - name: "METRON_CERT"
+        {{- if .Values.secrets.LOGGREGATOR_AGENT_CERT }}
+        - name: "LOGGREGATOR_AGENT_CERT"
           valueFrom:
             secretKeyRef:
-              key: "metron-cert"
+              key: "loggregator-agent-cert"
               name: "secrets"
         {{- end }}
 
-        {{- if not .Values.secrets.METRON_KEY }}
-        - name: "METRON_KEY"
+        {{- if not .Values.secrets.LOGGREGATOR_AGENT_CERT_KEY }}
+        - name: "LOGGREGATOR_AGENT_CERT_KEY"
           valueFrom:
             secretKeyRef:
-              key: "metron-key"
+              key: "loggregator-agent-cert-key"
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
-        {{- if .Values.secrets.METRON_KEY }}
-        - name: "METRON_KEY"
+        {{- if .Values.secrets.LOGGREGATOR_AGENT_CERT_KEY }}
+        - name: "LOGGREGATOR_AGENT_CERT_KEY"
           valueFrom:
             secretKeyRef:
-              key: "metron-key"
+              key: "loggregator-agent-cert-key"
               name: "secrets"
         {{- end }}
 
@@ -201,7 +213,7 @@ spec:
             secretKeyRef:
               key: "uaa-ca-cert"
               name: "secrets"
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-nfs-broker:706fd72165d8d860f58e61fe9d5531cff25a2b28"
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-nfs-broker:614fb79b45dad3be3c6ee29109803e0e4cf158b1"
         lifecycle:
           preStop:
             exec:
@@ -243,6 +255,9 @@ spec:
       imagePullSecrets:
       - name: "registry-credentials"
       restartPolicy: "Always"
+      {{- if eq (printf "%s" .Values.kube.auth) "rbac" }}
+      serviceAccountName: "default-privileged"
+      {{- end }}
       terminationGracePeriodSeconds: 600
       volumes: ~
   {{- if or (gt (int .Capabilities.KubeVersion.Major) 1) (and (eq (int .Capabilities.KubeVersion.Major) 1) (ge (.Capabilities.KubeVersion.Minor | trimSuffix "+" | int) 7)) }}
@@ -268,13 +283,26 @@ items:
 - apiVersion: "v1"
   kind: "Service"
   metadata:
-    name: "nfs-broker"
+    name: "nfs-broker-nfsbroker-set"
+  spec:
+    clusterIP: "None"
+    ports:
+    - name: "nfsbroker"
+      port: 8999
+      protocol: "TCP"
+      targetPort: 0
+    selector:
+      skiff-role-name: "nfs-broker"
+- apiVersion: "v1"
+  kind: "Service"
+  metadata:
+    name: "nfs-broker-nfsbroker"
   spec:
     ports:
     - name: "nfsbroker"
       port: 8999
       protocol: "TCP"
-      targetPort: "nfsbroker"
+      targetPort: 8999
     selector:
       skiff-role-name: "nfs-broker"
 kind: "List"
