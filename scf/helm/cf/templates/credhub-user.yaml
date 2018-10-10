@@ -1,14 +1,16 @@
 ---
-# The consul instance group contains the following jobs:
+# The credhub-user instance group contains the following jobs:
 #
 # - global-properties: Dummy BOSH job used to host global parameters that are
 #   required to configure SCF
 #
-# Also: consul_agent
-{{- if gt (int .Values.sizing.consul.count) 0 }}
+# - route_registrar: Used for registering routes
+#
+# Also: credhub
+{{- if gt (int .Values.sizing.credhub_user.count) 0 }}
 
-{{- if gt (int .Values.sizing.consul.count) 1 }}
-_maxReplicas: {{ fail "consul cannot have more than 1 instances" }}
+{{- if gt (int .Values.sizing.credhub_user.count) 1 }}
+_maxReplicas: {{ fail "credhub_user cannot have more than 1 instances" }}
 {{- end }}
 
 {{- if .Values.sizing.HA }}
@@ -31,25 +33,21 @@ _moved_sizing_memory_limits: {{ if .Values.sizing.memory.limits }} {{ fail "Bad 
 _moved_sizing_memory_requests: {{ if .Values.sizing.memory.requests }} {{ fail "Bad use of moved variable sizing.memory.requests. The new name to use is config.memory.requests" }} {{else}} ok {{end}}
 {{- end }}
 
-{{- if eq (mod (int .Values.sizing.consul.count) 2) 0 }}
-_oddReplicas: {{ fail "consul must have an odd instance count" }}
-{{- end }}
-
 apiVersion: "apps/v1beta1"
 kind: "StatefulSet"
 metadata:
-  name: "consul"
+  name: "credhub-user"
   labels:
-    skiff-role-name: "consul"
+    skiff-role-name: "credhub-user"
 spec:
   podManagementPolicy: "Parallel"
-  replicas: {{ if and .Values.config.HA (eq (int .Values.sizing.consul.count) 0) -}} 1 {{- else -}} {{ .Values.sizing.consul.count }} {{- end }}
-  serviceName: "consul-set"
+  replicas: {{ if and .Values.config.HA (eq (int .Values.sizing.credhub_user.count) 0) -}} 1 {{- else -}} {{ .Values.sizing.credhub_user.count }} {{- end }}
+  serviceName: "credhub-user-set"
   template:
     metadata:
-      name: "consul"
+      name: "credhub-user"
       labels:
-        skiff-role-name: "consul"
+        skiff-role-name: "credhub-user"
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
     spec:
@@ -57,44 +55,46 @@ spec:
       - env:
         - name: "CATS_SUITES"
           value: {{if ne (typeOf .Values.env.CATS_SUITES) "<nil>"}}{{if has (kindOf .Values.env.CATS_SUITES) (list "map" "slice")}}{{.Values.env.CATS_SUITES | toJson | quote}}{{else}}{{.Values.env.CATS_SUITES | quote}}{{end}}{{else}}""{{end}}
-
-        {{- if not .Values.secrets.CONSUL_SERVER_CERT }}
-        - name: "CONSUL_SERVER_CERT"
+        - name: "CREDHUB_ENCRYPT_KEY"
           valueFrom:
             secretKeyRef:
-              key: "consul-server-cert"
+              key: "credhub-encrypt-key"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+
+        {{- if not .Values.secrets.CREDHUB_SERVER_CERT }}
+        - name: "CREDHUB_SERVER_CERT"
+          valueFrom:
+            secretKeyRef:
+              key: "credhub-server-cert"
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
-        {{- if .Values.secrets.CONSUL_SERVER_CERT }}
-        - name: "CONSUL_SERVER_CERT"
+        {{- if .Values.secrets.CREDHUB_SERVER_CERT }}
+        - name: "CREDHUB_SERVER_CERT"
           valueFrom:
             secretKeyRef:
-              key: "consul-server-cert"
+              key: "credhub-server-cert"
               name: "secrets"
         {{- end }}
 
-        {{- if not .Values.secrets.CONSUL_SERVER_CERT_KEY }}
-        - name: "CONSUL_SERVER_CERT_KEY"
+        {{- if not .Values.secrets.CREDHUB_SERVER_CERT_KEY }}
+        - name: "CREDHUB_SERVER_CERT_KEY"
           valueFrom:
             secretKeyRef:
-              key: "consul-server-cert-key"
+              key: "credhub-server-cert-key"
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
-        {{- if .Values.secrets.CONSUL_SERVER_CERT_KEY }}
-        - name: "CONSUL_SERVER_CERT_KEY"
+        {{- if .Values.secrets.CREDHUB_SERVER_CERT_KEY }}
+        - name: "CREDHUB_SERVER_CERT_KEY"
           valueFrom:
             secretKeyRef:
-              key: "consul-server-cert-key"
+              key: "credhub-server-cert-key"
               name: "secrets"
         {{- end }}
 
-        - name: "CONSUL_SERVER_ENCRYPT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "consul-server-encrypt-key"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        - name: "DOMAIN"
+          value: {{if ne (typeOf .Values.env.DOMAIN) "<nil>"}}{{if has (kindOf .Values.env.DOMAIN) (list "map" "slice")}}{{.Values.env.DOMAIN | toJson | quote}}{{else}}{{.Values.env.DOMAIN | quote}}{{end}}{{else}}{{fail "env.DOMAIN has not been set"}}{{end}}
 
         {{- if not .Values.secrets.INTERNAL_CA_CERT }}
         - name: "INTERNAL_CA_CERT"
@@ -118,14 +118,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: "metadata.namespace"
-
-        {{- if not .Values.secrets.MONIT_PASSWORD }}
-        - name: "MONIT_PASSWORD"
-          valueFrom:
-            secretKeyRef:
-              key: "monit-password"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
+        - name: "KUBE_SIZING_NATS_COUNT"
+          value: {{ .Values.sizing.nats.count | quote }}
+        - name: "LOG_LEVEL"
+          value: {{if ne (typeOf .Values.env.LOG_LEVEL) "<nil>"}}{{if has (kindOf .Values.env.LOG_LEVEL) (list "map" "slice")}}{{.Values.env.LOG_LEVEL | toJson | quote}}{{else}}{{.Values.env.LOG_LEVEL | quote}}{{end}}{{else}}{{fail "env.LOG_LEVEL has not been set"}}{{end}}
 
         {{- if .Values.secrets.MONIT_PASSWORD }}
         - name: "MONIT_PASSWORD"
@@ -135,65 +131,102 @@ spec:
               name: "secrets"
         {{- end }}
 
+        {{- if not .Values.secrets.MONIT_PASSWORD }}
+        - name: "MONIT_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "monit-password"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if .Values.secrets.MYSQL_CREDHUB_USER_PASSWORD }}
+        - name: "MYSQL_CREDHUB_USER_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "mysql-credhub-user-password"
+              name: "secrets"
+        {{- end }}
+
+        {{- if not .Values.secrets.MYSQL_CREDHUB_USER_PASSWORD }}
+        - name: "MYSQL_CREDHUB_USER_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "mysql-credhub-user-password"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if not .Values.secrets.NATS_PASSWORD }}
+        - name: "NATS_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "nats-password"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if .Values.secrets.NATS_PASSWORD }}
+        - name: "NATS_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "nats-password"
+              name: "secrets"
+        {{- end }}
+
         - name: "SCF_LOG_HOST"
           value: {{if ne (typeOf .Values.env.SCF_LOG_HOST) "<nil>"}}{{if has (kindOf .Values.env.SCF_LOG_HOST) (list "map" "slice")}}{{.Values.env.SCF_LOG_HOST | toJson | quote}}{{else}}{{.Values.env.SCF_LOG_HOST | quote}}{{end}}{{else}}""{{end}}
         - name: "SCF_LOG_PORT"
           value: {{if ne (typeOf .Values.env.SCF_LOG_PORT) "<nil>"}}{{if has (kindOf .Values.env.SCF_LOG_PORT) (list "map" "slice")}}{{.Values.env.SCF_LOG_PORT | toJson | quote}}{{else}}{{.Values.env.SCF_LOG_PORT | quote}}{{end}}{{else}}""{{end}}
         - name: "SCF_LOG_PROTOCOL"
           value: {{if ne (typeOf .Values.env.SCF_LOG_PROTOCOL) "<nil>"}}{{if has (kindOf .Values.env.SCF_LOG_PROTOCOL) (list "map" "slice")}}{{.Values.env.SCF_LOG_PROTOCOL | toJson | quote}}{{else}}{{.Values.env.SCF_LOG_PROTOCOL | quote}}{{end}}{{else}}{{fail "env.SCF_LOG_PROTOCOL has not been set"}}{{end}}
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-consul:41fd84c1e51cb3051352b1a686852e4a70f26526"
+        - name: "UAA_CA_CERT"
+          valueFrom:
+            secretKeyRef:
+              key: "uaa-ca-cert"
+              name: "secrets"
+        - name: "UAA_HOST"
+          value: {{if ne (typeOf .Values.env.UAA_HOST) "<nil>"}}{{if has (kindOf .Values.env.UAA_HOST) (list "map" "slice")}}{{.Values.env.UAA_HOST | toJson | quote}}{{else}}{{.Values.env.UAA_HOST | quote}}{{end}}{{else}}{{fail "env.UAA_HOST has not been set"}}{{end}}
+        - name: "UAA_PORT"
+          value: {{if ne (typeOf .Values.env.UAA_PORT) "<nil>"}}{{if has (kindOf .Values.env.UAA_PORT) (list "map" "slice")}}{{.Values.env.UAA_PORT | toJson | quote}}{{else}}{{.Values.env.UAA_PORT | quote}}{{end}}{{else}}""{{end}}
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-credhub-user:4bde82fc07020bcc4075db3c28114d44f1bc4f66"
         lifecycle:
           preStop:
             exec:
               command:
               - "/opt/fissile/pre-stop.sh"
         livenessProbe: ~
-        name: "consul"
-        ports:
-        - containerPort: 8300
-          name: "consul-server"
-          protocol: "TCP"
-        - containerPort: 8500
-          name: "consul-http"
-          protocol: "TCP"
-        - containerPort: 8301
-          name: "serf-tcp"
-          protocol: "TCP"
-        - containerPort: 8301
-          name: "serf-udp"
-          protocol: "UDP"
+        name: "credhub-user"
+        ports: ~
         readinessProbe:
           exec:
             command:
             - "/opt/fissile/readiness-probe.sh"
         resources:
           requests:
-            {{- if and .Values.config.memory.requests .Values.sizing.consul.memory.request }}
-            memory: "{{ int .Values.sizing.consul.memory.request }}Mi"
+            {{- if and .Values.config.memory.requests .Values.sizing.credhub_user.memory.request }}
+            memory: "{{ int .Values.sizing.credhub_user.memory.request }}Mi"
             {{- end }}
 
-            {{- if and .Values.config.cpu.requests .Values.sizing.consul.cpu.request }}
-            cpu: "{{ int .Values.sizing.consul.cpu.request }}m"
+            {{- if and .Values.config.cpu.requests .Values.sizing.credhub_user.cpu.request }}
+            cpu: "{{ int .Values.sizing.credhub_user.cpu.request }}m"
             {{- end }}
 
           limits:
-            {{- if and .Values.config.memory.limits .Values.sizing.consul.memory.limit }}
-            memory: "{{ int .Values.sizing.consul.memory.limit }}Mi"
+            {{- if and .Values.config.memory.limits .Values.sizing.credhub_user.memory.limit }}
+            memory: "{{ int .Values.sizing.credhub_user.memory.limit }}Mi"
             {{- end }}
 
-            {{- if and .Values.config.cpu.limits .Values.sizing.consul.cpu.limit }}
-            cpu: "{{ int .Values.sizing.consul.cpu.limit }}m"
+            {{- if and .Values.config.cpu.limits .Values.sizing.credhub_user.cpu.limit }}
+            cpu: "{{ int .Values.sizing.credhub_user.cpu.limit }}m"
             {{- end }}
 
         securityContext:
-          {{- if has "ALL" .Values.sizing.consul.capabilities }}
+          {{- if has "ALL" .Values.sizing.credhub_user.capabilities }}
           privileged: true
           {{- end }}
 
-          {{- if not (has "ALL" .Values.sizing.consul.capabilities) }}
+          {{- if not (has "ALL" .Values.sizing.credhub_user.capabilities) }}
           capabilities:
             add:
-            {{- range .Values.sizing.consul.capabilities }}
+            {{- range .Values.sizing.credhub_user.capabilities }}
             - {{ . | upper }}
             {{- end }}
           {{- end }}
@@ -209,84 +242,4 @@ spec:
   updateStrategy:
     type: "RollingUpdate"
   {{- end }}
-{{- end }}
----
-{{- if gt (int .Values.sizing.consul.count) 0 }}
-apiVersion: "v1"
-items:
-- apiVersion: "v1"
-  kind: "Service"
-  metadata:
-    name: "consul-set"
-  spec:
-    clusterIP: "None"
-    ports:
-    - name: "consul-server"
-      port: 8300
-      protocol: "TCP"
-      targetPort: 0
-    - name: "consul-http"
-      port: 8500
-      protocol: "TCP"
-      targetPort: 0
-    - name: "serf-tcp"
-      port: 8301
-      protocol: "TCP"
-      targetPort: 0
-    - name: "serf-udp"
-      port: 8301
-      protocol: "UDP"
-      targetPort: 0
-    selector:
-      skiff-role-name: "consul"
-- apiVersion: "v1"
-  kind: "Service"
-  metadata:
-    name: "consul-consul-agent-set"
-  spec:
-    clusterIP: "None"
-    ports:
-    - name: "consul-server"
-      port: 8300
-      protocol: "TCP"
-      targetPort: 0
-    - name: "consul-http"
-      port: 8500
-      protocol: "TCP"
-      targetPort: 0
-    - name: "serf-tcp"
-      port: 8301
-      protocol: "TCP"
-      targetPort: 0
-    - name: "serf-udp"
-      port: 8301
-      protocol: "UDP"
-      targetPort: 0
-    selector:
-      skiff-role-name: "consul"
-- apiVersion: "v1"
-  kind: "Service"
-  metadata:
-    name: "consul-consul-agent"
-  spec:
-    ports:
-    - name: "consul-server"
-      port: 8300
-      protocol: "TCP"
-      targetPort: 8300
-    - name: "consul-http"
-      port: 8500
-      protocol: "TCP"
-      targetPort: 8500
-    - name: "serf-tcp"
-      port: 8301
-      protocol: "TCP"
-      targetPort: 8301
-    - name: "serf-udp"
-      port: 8301
-      protocol: "UDP"
-      targetPort: 8301
-    selector:
-      skiff-role-name: "consul"
-kind: "List"
 {{- end }}
