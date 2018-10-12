@@ -248,7 +248,7 @@ spec:
             secretKeyRef:
               key: "uaa-ca-cert"
               name: "secrets"
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-locket:8f13e33ef4f24f50a94bc44b356bd97ffa98bd0b"
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-locket:f55b583be5a18bb1d52926caec75adda86038801"
         lifecycle:
           preStop:
             exec:
