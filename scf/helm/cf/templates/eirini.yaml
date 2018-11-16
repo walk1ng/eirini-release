@@ -250,7 +250,6 @@ apiVersion: extensions/v1beta1
 kind: DaemonSet
 metadata:
   name: loggregator-fluentd
-  namespace: oratos
 spec:
   selector:
     matchLabels:
@@ -262,6 +261,7 @@ spec:
       labels:
         name: loggregator-fluentd
     spec:
+      serviceAccountName: "opi"
       containers:
       - name: loggregator-fluentd
         image: eirini/loggregator-fluentd
@@ -297,7 +297,7 @@ spec:
         imagePullPolicy: Always
         env:
         - name: AGENT_METRIC_SOURCE_ID
-          value: oratos/daemonset/loggregator-fluentd
+          value: scf/daemonset/loggregator-fluentd
         - name: ROUTER_ADDR
           value: doppler-doppler.scf.svc.cluster.local:8082
         - name: ROUTER_ADDR_WITH_AZ
@@ -330,7 +330,7 @@ spec:
       - name: varvcapdata
         hostPath:
           path: /var/vcap/data/
-      - name: scf-certs
+      - name: loggregator-tls-certs
         secret:
           secretName: secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}
           items:
@@ -340,4 +340,3 @@ spec:
               path: agent.key
             - key: internal-ca-cert
               path: ca.crt
-
