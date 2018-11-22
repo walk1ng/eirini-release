@@ -190,7 +190,7 @@ spec:
               name: "secrets"
         {{- end }}
 
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-syslog-scheduler:988a75642d970447d0c74913f70f50436ba5b8d9"
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-syslog-scheduler:3fceeaaaa85612cb8a939320b926f900fa09ba80"
         lifecycle:
           preStop:
             exec:
