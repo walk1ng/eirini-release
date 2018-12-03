@@ -1,0 +1,25 @@
+env:
+    DOMAIN: 158.176.94.75.nip.io
+    UAA_HOST: uaa.158.176.94.75.nip.io
+    UAA_PORT: 2793
+    ENABLE_OPI_STAGING: true
+
+opi:
+    image_tag: latest
+    use_registry_ingress: true
+    ingress_endpoint: eirini-dogs.eu-gb.containers.appdomain.cloud
+    namespace: opi
+
+kube:
+    external_ips:
+    - 158.176.94.75
+    - 158.176.94.77
+    storage_class:
+        persistent: "hostpath"
+        shared: "hostpath"
+    auth: rbac
+
+secrets:
+    CLUSTER_ADMIN_PASSWORD: test
+    UAA_ADMIN_CLIENT_SECRET: clientsecret
+    NATS_PASSWORD: "deez-nats"

@@ -129,8 +129,6 @@ spec:
           value: {{if ne (typeOf .Values.env.CATS_SUITES) "<nil>"}}{{if has (kindOf .Values.env.CATS_SUITES) (list "map" "slice")}}{{.Values.env.CATS_SUITES | toJson | quote}}{{else}}{{.Values.env.CATS_SUITES | quote}}{{end}}{{else}}""{{end}}
         - name: "DOMAIN"
           value: {{if ne (typeOf .Values.env.DOMAIN) "<nil>"}}{{if has (kindOf .Values.env.DOMAIN) (list "map" "slice")}}{{.Values.env.DOMAIN | toJson | quote}}{{else}}{{.Values.env.DOMAIN | quote}}{{end}}{{else}}{{fail "env.DOMAIN has not been set"}}{{end}}
-        - name: "GARDEN_ROOTFS_DRIVER"
-          value: {{if ne (typeOf .Values.env.GARDEN_ROOTFS_DRIVER) "<nil>"}}{{if has (kindOf .Values.env.GARDEN_ROOTFS_DRIVER) (list "map" "slice")}}{{.Values.env.GARDEN_ROOTFS_DRIVER | toJson | quote}}{{else}}{{.Values.env.GARDEN_ROOTFS_DRIVER | quote}}{{end}}{{else}}{{fail "env.GARDEN_ROOTFS_DRIVER has not been set"}}{{end}}
 
         {{- if not .Values.secrets.INTERNAL_CA_CERT }}
         - name: "INTERNAL_CA_CERT"
@@ -229,7 +227,7 @@ spec:
           value: {{if ne (typeOf .Values.env.SCF_LOG_PORT) "<nil>"}}{{if has (kindOf .Values.env.SCF_LOG_PORT) (list "map" "slice")}}{{.Values.env.SCF_LOG_PORT | toJson | quote}}{{else}}{{.Values.env.SCF_LOG_PORT | quote}}{{end}}{{else}}""{{end}}
         - name: "SCF_LOG_PROTOCOL"
           value: {{if ne (typeOf .Values.env.SCF_LOG_PROTOCOL) "<nil>"}}{{if has (kindOf .Values.env.SCF_LOG_PROTOCOL) (list "map" "slice")}}{{.Values.env.SCF_LOG_PROTOCOL | toJson | quote}}{{else}}{{.Values.env.SCF_LOG_PROTOCOL | quote}}{{end}}{{else}}{{fail "env.SCF_LOG_PROTOCOL has not been set"}}{{end}}
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-blobstore:446a405c2b71ae70bdda0eaf553ec7ff403f76de"
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-blobstore:9df2187840e4c00798135dd81f3f789f32ec79f0"
         lifecycle:
           preStop:
             exec:

@@ -108,20 +108,20 @@ spec:
               key: "cc-db-encryption-keys"
               name: "secrets"
 
-        {{- if .Values.secrets.CC_SERVER_CRT }}
-        - name: "CC_SERVER_CRT"
-          valueFrom:
-            secretKeyRef:
-              key: "cc-server-crt"
-              name: "secrets"
-        {{- end }}
-
         {{- if not .Values.secrets.CC_SERVER_CRT }}
         - name: "CC_SERVER_CRT"
           valueFrom:
             secretKeyRef:
               key: "cc-server-crt"
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if .Values.secrets.CC_SERVER_CRT }}
+        - name: "CC_SERVER_CRT"
+          valueFrom:
+            secretKeyRef:
+              key: "cc-server-crt"
+              name: "secrets"
         {{- end }}
 
         {{- if not .Values.secrets.CC_SERVER_CRT_KEY }}
@@ -157,10 +157,6 @@ spec:
           value: {{if ne (typeOf .Values.env.DEFAULT_STACK) "<nil>"}}{{if has (kindOf .Values.env.DEFAULT_STACK) (list "map" "slice")}}{{.Values.env.DEFAULT_STACK | toJson | quote}}{{else}}{{.Values.env.DEFAULT_STACK | quote}}{{end}}{{else}}""{{end}}
         - name: "DOMAIN"
           value: {{if ne (typeOf .Values.env.DOMAIN) "<nil>"}}{{if has (kindOf .Values.env.DOMAIN) (list "map" "slice")}}{{.Values.env.DOMAIN | toJson | quote}}{{else}}{{.Values.env.DOMAIN | quote}}{{end}}{{else}}{{fail "env.DOMAIN has not been set"}}{{end}}
-        - name: "ENABLE_OPI_STAGING"
-          value: {{if ne (typeOf .Values.env.ENABLE_OPI_STAGING) "<nil>"}}{{if has (kindOf .Values.env.ENABLE_OPI_STAGING) (list "map" "slice")}}{{.Values.env.ENABLE_OPI_STAGING | toJson | quote}}{{else}}{{.Values.env.ENABLE_OPI_STAGING | quote}}{{end}}{{else}}""{{end}}
-        - name: "GARDEN_ROOTFS_DRIVER"
-          value: {{if ne (typeOf .Values.env.GARDEN_ROOTFS_DRIVER) "<nil>"}}{{if has (kindOf .Values.env.GARDEN_ROOTFS_DRIVER) (list "map" "slice")}}{{.Values.env.GARDEN_ROOTFS_DRIVER | toJson | quote}}{{else}}{{.Values.env.GARDEN_ROOTFS_DRIVER | quote}}{{end}}{{else}}{{fail "env.GARDEN_ROOTFS_DRIVER has not been set"}}{{end}}
 
         {{- if not .Values.secrets.INTERNAL_API_PASSWORD }}
         - name: "INTERNAL_API_PASSWORD"
@@ -219,20 +215,20 @@ spec:
               name: "secrets"
         {{- end }}
 
-        {{- if not .Values.secrets.LOGGREGATOR_AGENT_CERT_KEY }}
-        - name: "LOGGREGATOR_AGENT_CERT_KEY"
-          valueFrom:
-            secretKeyRef:
-              key: "loggregator-agent-cert-key"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
         {{- if .Values.secrets.LOGGREGATOR_AGENT_CERT_KEY }}
         - name: "LOGGREGATOR_AGENT_CERT_KEY"
           valueFrom:
             secretKeyRef:
               key: "loggregator-agent-cert-key"
               name: "secrets"
+        {{- end }}
+
+        {{- if not .Values.secrets.LOGGREGATOR_AGENT_CERT_KEY }}
+        - name: "LOGGREGATOR_AGENT_CERT_KEY"
+          valueFrom:
+            secretKeyRef:
+              key: "loggregator-agent-cert-key"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
         - name: "LOG_LEVEL"
@@ -281,20 +277,20 @@ spec:
         - name: "STAGING_TIMEOUT"
           value: {{if ne (typeOf .Values.env.STAGING_TIMEOUT) "<nil>"}}{{if has (kindOf .Values.env.STAGING_TIMEOUT) (list "map" "slice")}}{{.Values.env.STAGING_TIMEOUT | toJson | quote}}{{else}}{{.Values.env.STAGING_TIMEOUT | quote}}{{end}}{{else}}{{fail "env.STAGING_TIMEOUT has not been set"}}{{end}}
 
-        {{- if not .Values.secrets.STAGING_UPLOAD_PASSWORD }}
-        - name: "STAGING_UPLOAD_PASSWORD"
-          valueFrom:
-            secretKeyRef:
-              key: "staging-upload-password"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
         {{- if .Values.secrets.STAGING_UPLOAD_PASSWORD }}
         - name: "STAGING_UPLOAD_PASSWORD"
           valueFrom:
             secretKeyRef:
               key: "staging-upload-password"
               name: "secrets"
+        {{- end }}
+
+        {{- if not .Values.secrets.STAGING_UPLOAD_PASSWORD }}
+        - name: "STAGING_UPLOAD_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "staging-upload-password"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
         - name: "SUSE_STACK"
@@ -307,14 +303,6 @@ spec:
               key: "uaa-ca-cert"
               name: "secrets"
 
-        {{- if not .Values.secrets.UAA_CLIENTS_CC_ROUTING_SECRET }}
-        - name: "UAA_CLIENTS_CC_ROUTING_SECRET"
-          valueFrom:
-            secretKeyRef:
-              key: "uaa-clients-cc-routing-secret"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
-        {{- end }}
-
         {{- if .Values.secrets.UAA_CLIENTS_CC_ROUTING_SECRET }}
         - name: "UAA_CLIENTS_CC_ROUTING_SECRET"
           valueFrom:
@@ -323,12 +311,12 @@ spec:
               name: "secrets"
         {{- end }}
 
-        {{- if .Values.secrets.UAA_CLIENTS_CC_SERVICE_DASHBOARDS_CLIENT_SECRET }}
-        - name: "UAA_CLIENTS_CC_SERVICE_DASHBOARDS_CLIENT_SECRET"
+        {{- if not .Values.secrets.UAA_CLIENTS_CC_ROUTING_SECRET }}
+        - name: "UAA_CLIENTS_CC_ROUTING_SECRET"
           valueFrom:
             secretKeyRef:
-              key: "uaa-clients-cc-service-dashboards-client-secret"
-              name: "secrets"
+              key: "uaa-clients-cc-routing-secret"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
         {{- if not .Values.secrets.UAA_CLIENTS_CC_SERVICE_DASHBOARDS_CLIENT_SECRET }}
@@ -337,6 +325,14 @@ spec:
             secretKeyRef:
               key: "uaa-clients-cc-service-dashboards-client-secret"
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if .Values.secrets.UAA_CLIENTS_CC_SERVICE_DASHBOARDS_CLIENT_SECRET }}
+        - name: "UAA_CLIENTS_CC_SERVICE_DASHBOARDS_CLIENT_SECRET"
+          valueFrom:
+            secretKeyRef:
+              key: "uaa-clients-cc-service-dashboards-client-secret"
+              name: "secrets"
         {{- end }}
 
         - name: "UAA_HOST"
