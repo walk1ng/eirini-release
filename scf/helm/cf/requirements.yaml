@@ -1,0 +1,4 @@
+dependencies:
+  - name: eirini
+    version: 0.1.0
+    repository: https://cloudfoundry-incubator.github.io/eirini-release/index.yaml
