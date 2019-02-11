@@ -12,7 +12,7 @@ This is a `helm` release for Project [Eirini](https://code.cloudfoundry.org/eiri
 ## Helm Install
 
 1. Choose a [non NFS based `StorageClass`](https://github.com/SUSE/scf/wiki/How-to-Install-SCF#choosing-a-storage-class) because MySQL does not work well with it. For additional information you can take a look at [Cloud Specifics](#cloud-specifics)
-1. Create a `values.yaml` based on [this](https://github.com/cloudfoundry-incubator/eirini-release/blob/master/) template.
+1. Create a `values.yaml` based on [this](https://github.com/cloudfoundry-incubator/eirini-release/blob/master/values.yaml) template.
 1. Make the Eirini helm repository available to helm:
 
     ```command 
