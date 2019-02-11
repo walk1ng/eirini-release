@@ -20,7 +20,6 @@ scf:
   secrets_generation_counter: 1
 
 secrets:
-  NATS_PASSWORD: nats
   BITS_SERVICE_SECRET: secret
   BITS_SERVICE_SIGNING_USER_PASSWORD: notpassword123
   BLOBSTORE_PASSWORD:  blobstore

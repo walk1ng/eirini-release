@@ -43,7 +43,13 @@ spec:
               path: cc.ca
       initContainers:
       - name: configure-opi-yaml
-        image: eirini/opi-init:{{ .Values.opi.image_tag }}
+        image: eirini/init:nats
+        env:
+        - name: "NATS_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "nats-password"
+              name: "secrets-{{ .Values.scf.version }}-{{ .Values.scf.secrets_generation_counter }}"
         volumeMounts:
         - name: config-map-volume
           mountPath: /configs
