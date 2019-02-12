@@ -85,7 +85,7 @@ spec:
           path: /var/vcap/data/
       - name: loggregator-tls-certs
         secret:
-          secretName: secrets-{{ .Chart.Version }}-{{ .Values.scf.secrets_generation_counter }}
+          secretName: secrets-{{ .Values.scf.version }}-{{ .Values.scf.secrets_generation_counter }}
           items:
             - key: loggregator-agent-cert
               path: agent.crt
