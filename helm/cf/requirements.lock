@@ -1,6 +1,6 @@
 dependencies:
 - name: eirini
   repository: file://../eirini
-  version: 0.3.0
-digest: sha256:501e76ba19c52a1d73f16bf7d36b53d60bed01ecdc7f797950e8ac33a5b609a4
-generated: 2019-02-11T16:37:00.960278296+01:00
+  version: 0.0.0-dev
+digest: sha256:27b6bbd29b813e5630b5049ed933b153e1adb195c0ee866a995042cf3842d813
+generated: 2019-02-12T13:38:18.904185688+01:00
